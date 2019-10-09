@@ -25,7 +25,9 @@ namespace STK
         bool playing = false;
         bool steppingForward = false;
         bool steppingBackward = false;
+        bool reInitialize = false;
         float lastSystemTime;
+        float playbackSpeed = 1.0f;
 
         private void OnInspectorUpdate()
         {
@@ -34,7 +36,7 @@ namespace STK
             {
                 if (playing)
                 {
-                    currentTime += t - lastSystemTime;
+                    currentTime += (t - lastSystemTime) * playbackSpeed;
                     STKScenePlayback.GoToPoint(currentTime);
                     Repaint();
                 }
@@ -66,8 +68,36 @@ namespace STK
                 currentTime = 0;
             }
 
+            if (reInitialize)
+            {
+                InitializeValues();
+                Repaint();
+                reInitialize = false;
+            }
+
             lastSystemTime = t;
         }
+
+
+        private void InitializeValues()
+        {
+            currentStage = 0;
+            lastStage = 0;
+            lastTime = 0;
+            currentTime = 0;
+            playing = false;
+            lastSystemTime = Time.realtimeSinceStartup;
+            playbackSpeed = 1.0f;
+            if (filePath != null)
+            {
+                StreamReader reader = new StreamReader(filePath);
+                string s = reader.ReadToEnd();
+                STKScenePlayback.StartPlayback(s, currentStage);
+                STKScenePlayback.GoToPoint(currentTime);
+                lastTimestampOfStage = STKScenePlayback.GetLastTimestampOfCurrentStage();
+            }
+        }
+
 
         private void OnGUI()
         {
@@ -87,11 +117,15 @@ namespace STK
             {
                 EditorGUILayout.LabelField("Playback");
                 EditorGUILayout.Space();
+
+
                 if (GUILayout.Button("Select JSON File"))
                 {
                     System.Threading.Thread.CurrentThread.CurrentCulture = new System.Globalization.CultureInfo("en-US");
                     filePath = EditorUtility.OpenFilePanel("Select JSON File", filePath, "json");
+                    InitializeValues();
                 }
+                EditorGUILayout.Space();
 
                 if (!started)
                 {
@@ -103,8 +137,9 @@ namespace STK
                 {
                     currentStage = EditorGUILayout.IntField("Stage (Start at 0):", currentStage);
                     currentTime = EditorGUILayout.FloatField("Time to Restore:", currentTime);
+                    playbackSpeed = EditorGUILayout.FloatField("Playback Speed: ", playbackSpeed);
 
-                    EditorGUILayout.LabelField("Last Recorded Time of the Stage: " + lastTimestampOfStage);
+                    EditorGUILayout.LabelField("Last Recorded Time in Stage: " + lastTimestampOfStage);
 
                     if (currentStage != lastStage)
                     {
@@ -115,7 +150,6 @@ namespace STK
                         STKScenePlayback.GoToPoint(currentTime);
 
                         lastTimestampOfStage = STKScenePlayback.GetLastTimestampOfCurrentStage();
-                        //reader
                     }
 
                     else if (currentTime != lastTime)
@@ -123,20 +157,25 @@ namespace STK
                         STKScenePlayback.GoToPoint(currentTime);
                     }
 
+                    EditorGUILayout.Space();
                     if (!playing)
                     {
                         if (GUILayout.Button("Play"))
                         {
                             playing = true;
                         }
-                        if (GUILayout.Button("Step Forwards"))
-                        {
-                            steppingForward = true;
-                        }
+
+                        GUILayout.BeginHorizontal();
                         if (GUILayout.Button("Step Backwards"))
                         {
                             steppingBackward = true;
                         }
+
+                        if (GUILayout.Button("Step Forwards"))
+                        {
+                            steppingForward = true;
+                        }
+                        GUILayout.EndHorizontal();
                     }
                     else
                     {
@@ -144,6 +183,12 @@ namespace STK
                         {
                             playing = false;
                         }
+                    }
+
+                    EditorGUILayout.Space();
+                    if (GUILayout.Button("Reset Values"))
+                    {
+                        InitializeValues();
                     }
 
 

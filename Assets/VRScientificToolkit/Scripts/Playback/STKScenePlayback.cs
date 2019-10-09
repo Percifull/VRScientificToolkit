@@ -153,6 +153,10 @@ namespace STK
 
         public static float GoToPreviousPoint(float currentTime)
         {
+            if (currentTime < 0)
+            {
+                return 0.0f;
+            }
             foreach (GameObject g in trackedObjects) // Goes through events with Eventsenders and finds their respective events in the JSON file
             {
                 if (g != null && g.GetComponent<STKEventSender>() != null && g.GetComponent<STKEventSender>().eventBase != null)
@@ -181,13 +185,22 @@ namespace STK
                         if (events != null)
                         {
                             string newFrameTime = "0";
-                            for (int i = 1; i < events.Count; i++)
+                            for (int i = 0; i < events.Count; i++)
                             {
                                 if (float.Parse(events[i]["time"]) >= currentTime)
                                 {
-                                    currentEvent = events[i - 1];
-                                    newFrameTime = events[i - 1]["time"];
+                                    if (i == 0)
+                                    {
+                                        currentEvent = events[i];
+                                        newFrameTime = "0";
+                                    }
+                                    else
+                                    {
+                                        currentEvent = events[i - 1];
+                                        newFrameTime = events[i - 1]["time"];
+                                    }
                                     break;
+
                                 }
                             }
 
