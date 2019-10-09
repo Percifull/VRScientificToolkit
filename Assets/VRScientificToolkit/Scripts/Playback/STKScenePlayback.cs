@@ -95,6 +95,146 @@ namespace STK
             }
         }
 
+        public static float GoToNextPoint(float currentTime)
+        {
+            foreach (GameObject g in trackedObjects) // Goes through events with Eventsenders and finds their respective events in the JSON file
+            {
+                if (g != null && g.GetComponent<STKEventSender>() != null && g.GetComponent<STKEventSender>().eventBase != null)
+                {
+                    if (g.activeSelf == false)
+                    {
+                        g.SetActive(true);
+                        MonoBehaviour[] components = g.GetComponents<MonoBehaviour>();
+                        foreach (MonoBehaviour c in components)
+                        {
+                            c.enabled = false;
+                        }
+                        Rigidbody[] rigidbodies = g.GetComponents<Rigidbody>();
+                        foreach (Rigidbody r in rigidbodies)
+                        {
+                            r.isKinematic = true;
+                        }
+                    }
+                    STKEventSender[] senders = g.GetComponents<STKEventSender>();
+                    g.SetActive(false);
+                    foreach (STKEventSender s in senders)
+                    {
+                        STKEvent eventBase = s.eventBase;
+                        JSONNode currentEvent = parsedJson;
+                        JSONNode events = parsedJson[("Stage" + stage.ToString())][eventBase.eventName];
+                        if (events != null)
+                        {
+                            string newFrameTime = "0";
+                            for (int i = 0; i < events.Count; i++)
+                            {
+                                if (float.Parse(events[i]["time"]) > currentTime)
+                                {
+                                    currentEvent = events[i];
+                                    newFrameTime = events[i]["time"];
+                                    break;
+                                }
+                            }
+                            foreach (EventParameter param in eventBase.parameters)
+                            {
+                                Component component = s.GetComponentFromParameter(param.name);
+                                string name = s.GetVariableNameFromEventVariable(param.name);
+                                if (name != null && name != "")
+                                {
+                                    SetVariable(currentEvent[param.name], name, component, g);
+                                }
+                            }
+                            return float.Parse(newFrameTime);
+                        }
+                    }
+                }
+            }
+            return 0.0f;
+        }
+
+        public static float GoToPreviousPoint(float currentTime)
+        {
+            foreach (GameObject g in trackedObjects) // Goes through events with Eventsenders and finds their respective events in the JSON file
+            {
+                if (g != null && g.GetComponent<STKEventSender>() != null && g.GetComponent<STKEventSender>().eventBase != null)
+                {
+                    if (g.activeSelf == false)
+                    {
+                        g.SetActive(true);
+                        MonoBehaviour[] components = g.GetComponents<MonoBehaviour>();
+                        foreach (MonoBehaviour c in components)
+                        {
+                            c.enabled = false;
+                        }
+                        Rigidbody[] rigidbodies = g.GetComponents<Rigidbody>();
+                        foreach (Rigidbody r in rigidbodies)
+                        {
+                            r.isKinematic = true;
+                        }
+                    }
+                    STKEventSender[] senders = g.GetComponents<STKEventSender>();
+                    g.SetActive(false);
+                    foreach (STKEventSender s in senders)
+                    {
+                        STKEvent eventBase = s.eventBase;
+                        JSONNode currentEvent = parsedJson;
+                        JSONNode events = parsedJson[("Stage" + stage.ToString())][eventBase.eventName];
+                        if (events != null)
+                        {
+                            string newFrameTime = "0";
+                            for (int i = 1; i < events.Count; i++)
+                            {
+                                if (float.Parse(events[i]["time"]) >= currentTime)
+                                {
+                                    currentEvent = events[i - 1];
+                                    newFrameTime = events[i - 1]["time"];
+                                    break;
+                                }
+                            }
+
+                            foreach (EventParameter param in eventBase.parameters)
+                            {
+                                Component component = s.GetComponentFromParameter(param.name);
+                                string name = s.GetVariableNameFromEventVariable(param.name);
+                                if (name != null && name != "")
+                                {
+                                    SetVariable(currentEvent[param.name], name, component, g);
+                                }
+                            }
+                            return float.Parse(newFrameTime);
+                        }
+                    }
+                }
+            }
+            return 0.0f;
+        }
+
+        public static float GetLastTimestampOfCurrentStage()
+        {
+            foreach (GameObject g in trackedObjects) // Goes through events with Eventsenders and finds their respective events in the JSON file
+            {
+                if (g != null && g.GetComponent<STKEventSender>() != null && g.GetComponent<STKEventSender>().eventBase != null)
+                {
+                    STKEventSender[] senders = g.GetComponents<STKEventSender>();
+                    g.SetActive(false);
+                    foreach (STKEventSender s in senders)
+                    {
+                        STKEvent eventBase = s.eventBase;
+                        JSONNode currentEvent = parsedJson;
+                        JSONNode events = parsedJson[("Stage" + stage.ToString())][eventBase.eventName];
+                        if (events != null)
+                        {
+                            string timestamp = events[events.Count - 1]["time"];
+                            if (timestamp != null)
+                            {
+                                return float.Parse(timestamp);
+                            }
+                        }
+                    }
+                }
+            }
+            return 0;
+        }
+
         public static void SetVariable(JSONNode node, string name, Component c, GameObject g) //Sets ariable of a gameobject to a value from the JSON file
         {
             if (node.IsArray) //Arrays are converted into vectors

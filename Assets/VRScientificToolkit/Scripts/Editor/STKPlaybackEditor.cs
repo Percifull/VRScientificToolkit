@@ -19,20 +19,53 @@ namespace STK
         int lastStage;
         float currentTime;
         float lastTime;
+        float lastTimestampOfStage;
         string filePath;
         bool started;
         bool playing = false;
+        bool steppingForward = false;
+        bool steppingBackward = false;
         float lastSystemTime;
 
         private void OnInspectorUpdate()
         {
             float t = Time.realtimeSinceStartup;
-            if (playing)
+            if (currentTime < lastTimestampOfStage)
             {
-                currentTime += t - lastSystemTime;
-                STKScenePlayback.GoToPoint(currentTime);
+                if (playing)
+                {
+                    currentTime += t - lastSystemTime;
+                    STKScenePlayback.GoToPoint(currentTime);
+                    Repaint();
+                }
+                else if (steppingForward)
+                {
+                    steppingForward = false;
+                    currentTime = STKScenePlayback.GoToNextPoint(currentTime);
+                    Repaint();
+                }
+            }
+            else
+            {
+                currentTime = lastTimestampOfStage;
+                playing = false;
                 Repaint();
             }
+
+            if (currentTime >= 0)
+            {
+                if (steppingBackward)
+                {
+                    steppingBackward = false;
+                    currentTime = STKScenePlayback.GoToPreviousPoint(currentTime);
+                    Repaint();
+                }
+            }
+            else
+            {
+                currentTime = 0;
+            }
+
             lastSystemTime = t;
         }
 
@@ -41,6 +74,7 @@ namespace STK
             if (!EditorApplication.isPlaying)
             {
                 EditorGUILayout.LabelField("Please enter play mode to use the Playback tool.");
+                lastTimestampOfStage = 0;
                 currentStage = 0;
                 lastStage = -1;
                 currentTime = 0;
@@ -70,13 +104,20 @@ namespace STK
                     currentStage = EditorGUILayout.IntField("Stage (Start at 0):", currentStage);
                     currentTime = EditorGUILayout.FloatField("Time to Restore:", currentTime);
 
+                    EditorGUILayout.LabelField("Last Recorded Time of the Stage: " + lastTimestampOfStage);
+
                     if (currentStage != lastStage)
                     {
+                        lastStage = currentStage;
                         StreamReader reader = new StreamReader(filePath);
                         string s = reader.ReadToEnd();
                         STKScenePlayback.StartPlayback(s, currentStage);
                         STKScenePlayback.GoToPoint(currentTime);
+
+                        lastTimestampOfStage = STKScenePlayback.GetLastTimestampOfCurrentStage();
+                        //reader
                     }
+
                     else if (currentTime != lastTime)
                     {
                         STKScenePlayback.GoToPoint(currentTime);
@@ -87,6 +128,14 @@ namespace STK
                         if (GUILayout.Button("Play"))
                         {
                             playing = true;
+                        }
+                        if (GUILayout.Button("Step Forwards"))
+                        {
+                            steppingForward = true;
+                        }
+                        if (GUILayout.Button("Step Backwards"))
+                        {
+                            steppingBackward = true;
                         }
                     }
                     else
